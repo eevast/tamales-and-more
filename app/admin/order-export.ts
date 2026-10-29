@@ -1,0 +1,10 @@
+import {itemCount,itemDetails,type DisplayItem} from "../orders/order-display";
+type ExportOrder={number:string;name:string;status:string;submittedAt:string|null;pickupDate:string;contactName:string;email:string;phone:string;items:DisplayItem[];totalTamales:number;totalCents:number;notes:string;adminNote?:string};
+export function csvCell(value:unknown){let text=value==null?"":String(value);if(/^\s*[=+\-@]/.test(text)||/^[\t\r\n]/.test(text))text=`'${text}`;return `"${text.replaceAll('"','""')}"`;}
+export function ordersCsv(orders:ExportOrder[]){
+  const headings=["Order number","Order name","Status","Submitted at","Requested pickup","Contact name","Email","Phone","Item","Type","Unit","Dozens","Singles or side units","Total item quantity","Price per dozen (USD)","Price per unit (USD)","Line subtotal (USD)","Order total (USD; repeated per item)","Total tamales","Customer notes","Kitchen notes"];
+  const rows:unknown[][]=[headings];
+  for(const order of orders)for(const item of order.items){const info=itemDetails(item);const subtotal=(info.kind==="tamale"?item.dozens*info.dozenCents:0)+item.singles*info.singleCents;rows.push([order.number,order.name,order.status,order.submittedAt,order.pickupDate,order.contactName,order.email,order.phone,info.name,info.kind,info.unit,info.kind==="tamale"?item.dozens:0,item.singles,itemCount(item),(info.dozenCents/100).toFixed(2),(info.singleCents/100).toFixed(2),(subtotal/100).toFixed(2),(order.totalCents/100).toFixed(2),order.totalTamales,order.notes,order.adminNote]);}
+  return "\uFEFF"+rows.map(row=>row.map(csvCell).join(",")).join("\r\n");
+}
+export function downloadOrdersCsv(orders:ExportOrder[],scope:string){const blob=new Blob([ordersCsv(orders)],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`tamales-orders-${scope}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
